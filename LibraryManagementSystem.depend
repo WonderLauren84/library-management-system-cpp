@@ -1,9 +1,0 @@
-# depslib dependency file v1.0
-1776284267 source:c:\cpptest\librarymanagementsystem\main.cpp
-	<iostream>
-	<string>
-	<vector>
-	<stdexcept>
-	<iomanip>
-	<cctype>
-
