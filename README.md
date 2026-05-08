@@ -8,7 +8,6 @@ The program allows users to:
 - Check out books
 - Return books
 - Display member information
-- Add books to the library
 
 ## Concepts Demonstrated
 - Object-oriented programming
