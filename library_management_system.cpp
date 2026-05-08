@@ -7,6 +7,7 @@
 #include <queue>
 #include <stack>
 #include <list>
+#include <algorithm>
 
 using namespace std;
 
@@ -361,6 +362,23 @@ public:
         return -1;
     }
 
+    /*
+    ----------------------------------------------------
+    Checks whether a book is currently checked out.
+    This is used when returning books so the program
+    can ask for another Book ID instead of ending the
+    return process immediately.
+    ----------------------------------------------------
+    */
+    bool isBookCheckedOut(int index) const
+    {
+        if (index >= 0 && index < static_cast<int>(books.size()))
+        {
+            return books[index].isCheckedOut();
+        }
+
+        return false;
+    }
     void checkOutBookByIndex(int index)
     {
         if (index >= 0 && index < static_cast<int>(books.size()))
@@ -396,6 +414,36 @@ public:
             throw runtime_error("Invalid book index.");
         }
     }
+        /*
+    ----------------------------------------------------
+    Sort books by Book ID
+    Uses the STL sort function with a lambda expression.
+    Books are sorted from lowest ID to highest ID.
+    ----------------------------------------------------
+    */
+    void sortBooksByID()
+    {
+        sort(books.begin(), books.end(), [](const Book& a, const Book& b)
+        {
+            return a.getBookID() < b.getBookID();
+        });
+    }
+
+    /*
+    ----------------------------------------------------
+    Sort books alphabetically by title
+    Converts titles to lowercase so sorting is
+    case-insensitive.
+    ----------------------------------------------------
+    */
+    void sortBooksByTitle()
+    {
+        sort(books.begin(), books.end(), [](const Book& a, const Book& b)
+        {
+            return toLowerCase(a.getTitle()) < toLowerCase(b.getTitle());
+        });
+    }
+
 };
 
 /*
@@ -433,6 +481,25 @@ void displayMessage(T message)
 
 /*
 ----------------------------------------------------
+Recursive function
+Displays library notices one at a time.
+The function stops when it reaches the end of the list.
+----------------------------------------------------
+*/
+void displayNoticesRecursive(list<string>::const_iterator current,
+                             list<string>::const_iterator end)
+{
+    if (current == end)
+    {
+        return;
+    }
+
+    cout << "- " << *current << endl;
+
+    displayNoticesRecursive(++current, end);
+}
+/*
+----------------------------------------------------
 Main function
 Creates the library, member list, queue, stack, and
 linked list. The menu allows the user to interact
@@ -464,10 +531,18 @@ int main()
     myLibrary.addBook(Book(4, "Programming Basics", "KYSU Publication"));
     myLibrary.addBook(Book(5, "Programming in C++", "B. Stroustrup"));
     myLibrary.addBook(Book(6, "How Many Slices Would You Like?: Pizza Coding", "Lauren B."));
+    myLibrary.addBook(Book(7, "Cybersecurity Fundamentals", "KSU Press"));
+
+    // pointer example "Featured Book"
+    Book* featuredBook =
+        new Book(7, "Cybersecurity Fundamentals","KSU Press");
 
     libraryNotices.push_back("Return books within 14 days.");
     libraryNotices.push_back("Use book ID when checking out books.");
-    libraryNotices.push_back("Late fees apply after overdue books.");
+    libraryNotices.push_back("Late fees apply after books are overdue.");
+
+    //pointer access to featured book
+    libraryNotices.push_back("Featured Book:" + featuredBook->getTitle());
 
     int choice;
     string title;
@@ -503,9 +578,45 @@ int main()
 
         switch (choice)
         {
-            case 1:
+           case 1:
             {
-                cout << "\nAll books in the library:\n";
+                int sortChoice;
+
+                /*
+                ----------------------------------------------------
+                Allows the user to choose how books should be sorted
+                before displaying the library catalog.
+                ----------------------------------------------------
+                */
+                cout << "\nHow would you like to display the books?" << endl;
+                cout << "1. Sort by book ID" << endl;
+                cout << "2. Sort alphabetically by title" << endl;
+                cout << "Enter choice: ";
+
+                cin >> sortChoice;
+                cin.ignore(1000, '\n');
+
+                // Sort books by numerical Book ID.
+                if (sortChoice == 1)
+                {
+                    myLibrary.sortBooksByID();
+                    cout << "\nAll books sorted by Book ID:\n";
+                }
+
+                // Sort books alphabetically by title.
+                else if (sortChoice == 2)
+                {
+                    myLibrary.sortBooksByTitle();
+                    cout << "\nAll books sorted alphabetically by title:\n";
+                }
+
+                // Default behavior if invalid sorting option is entered.
+                else
+                {
+                    cout << "Invalid sorting choice. Showing books by Book ID.\n";
+                    myLibrary.sortBooksByID();
+                }
+
                 myLibrary.showAllBooks();
                 break;
             }
@@ -566,7 +677,7 @@ int main()
                 break;
             }
 
-            case 4:
+                        case 4:
             {
                 cout << "Enter the title to return: ";
                 getline(cin, title);
@@ -576,14 +687,36 @@ int main()
 
                 try
                 {
-                    int bookID = getValidNumberInput("Enter Book ID: ");
-                    int memberID = getValidNumberInput("Enter Member ID: ");
+                    /*
+                    ----------------------------------------------------
+                    Keeps asking for a valid Book ID until the user
+                    selects a checked out book that can be returned.
+                    ----------------------------------------------------
+                    */
+                    int foundIndex = -1;
 
-                    int foundIndex = myLibrary.findBookByID(bookID);
-                    if (foundIndex == -1)
+                    while (true)
                     {
-                        throw runtime_error("Book not found in library.");
+                        int bookID = getValidNumberInput("Enter Book ID: ");
+
+                        foundIndex = myLibrary.findBookByID(bookID);
+
+                        if (foundIndex == -1)
+                        {
+                            cout << "Error: Book ID not found. Please try again.\n";
+                            continue;
+                        }
+
+                        if (!myLibrary.isBookCheckedOut(foundIndex))
+                        {
+                            cout << "Error: Book is already available. Please enter another Book ID.\n";
+                            continue;
+                        }
+
+                        break;
                     }
+
+                    int memberID = getValidNumberInput("Enter Member ID: ");
 
                     int memberIndex = findMemberByID(members, memberID);
                     if (memberIndex == -1)
@@ -625,22 +758,50 @@ int main()
             case 6:
             {
                 string requestName;
+                string holdSearch;
 
                 cout << "Enter member name for hold request: ";
                 getline(cin, requestName);
 
-                if (requestName == "")
+                cout << "Enter title to search for hold request: ";
+                getline(cin, holdSearch);
+
+                cout << "\nMatching books:\n";
+                myLibrary.showMatchingBooks(holdSearch);
+
+                try
                 {
-                    cout << "Error: Hold request name cannot be blank." << endl;
-                }
-                else
-                {
-                    // Queue adds the newest hold request to the back.
-                    holdRequests.push(requestName);
+                    int bookID = getValidNumberInput("Enter Book ID for hold request: ");
+
+                    int foundIndex = myLibrary.findBookByID(bookID);
+                    if (foundIndex == -1)
+                    {
+                        throw runtime_error("Book not found in library.");
+                    }
+
+                    if (requestName == "")
+                    {
+                        throw runtime_error("Hold request name cannot be blank.");
+                    }
+
+                    string actualTitle = myLibrary.getBookTitleByIndex(foundIndex);
+
+                    /*
+                    ----------------------------------------------------
+                    Queue stores the hold request with both the member
+                    name and the exact book title selected by Book ID.
+                    ----------------------------------------------------
+                    */
+                    holdRequests.push(requestName + " requested: " + actualTitle);
 
                     cout << requestName
-                         << " has been added to the hold request queue."
+                         << " has been added to the hold request queue for \""
+                         << actualTitle << "\"."
                          << endl;
+                }
+                catch (runtime_error& e)
+                {
+                    cout << "Error: " << e.what() << endl;
                 }
 
                 break;
@@ -686,11 +847,14 @@ int main()
             {
                 cout << "\nLibrary Notices:\n";
 
-                // Linked list is traversed to display each notice.
-                for (const string& notice : libraryNotices)
-                {
-                    cout << "- " << notice << endl;
-                }
+                /*
+                ----------------------------------------------------
+                Recursive function displays notices from the
+                linked list one notice at a time.
+                ----------------------------------------------------
+                */
+                displayNoticesRecursive(libraryNotices.begin(),
+                                        libraryNotices.end());
 
                 break;
             }
@@ -710,6 +874,9 @@ int main()
         }
 
     } while (choice != 10);
+
+    //release dynamically allocated memory
+    delete featuredBook;
 
     return 0;
 }
